@@ -1,0 +1,7 @@
+dash
+pandas
+plotly
+lxml
+html5lib
+beautifulsoup4
+gunicorn
