@@ -23,7 +23,7 @@ def get_filter_options(df):
         df['Robo_Type']
         .dropna()
         .unique(),
-        'All types'
+        'All strategies'
     )
 
     robo_name_options = create_options(
@@ -92,7 +92,7 @@ def get_dependent_filter_options(df,
         robo_type_df['Robo_Type']
         .dropna()
         .unique(),
-        'All types'
+        'All strategies'
     )
 
     robo_name_options = create_options(
