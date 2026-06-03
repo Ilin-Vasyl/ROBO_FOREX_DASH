@@ -2,7 +2,7 @@ import pandas as pd
 
 from analytics import build_daily_and_balance
 from chart import build_chart
-from dash import Input, Output
+from dash import Input, Output, no_update
 
 from filters import get_dependent_filter_options
 
@@ -63,14 +63,40 @@ def register_callbacks(app, df):
         )
 
     @app.callback(
+        Output('date-picker', 'start_date'),
+        Output('date-picker', 'end_date'),
+        Input('balance-chart', 'relayoutData')
+    )
+    def update_date_picker_from_zoom(relayout_data):
+
+        zoom_start, zoom_end = get_zoom_range(relayout_data)
+
+        if zoom_start is None or zoom_end is None:
+
+            if relayout_data and relayout_data.get('xaxis.autorange'):
+                return (
+                    df['Close Time'].min().date(),
+                    df['Close Time'].max().date()
+                )
+
+            return (
+                no_update,
+                no_update
+            )
+
+        return (
+            zoom_start.date(),
+            zoom_end.date()
+        )
+
+    @app.callback(
         Output('balance-chart', 'figure'),
         Input('date-picker', 'start_date'),
         Input('date-picker', 'end_date'),
         Input('pair-dropdown', 'value'),
         Input('robo-type-dropdown', 'value'),
         Input('robo-name-dropdown', 'value'),
-        Input('combo-metric-dropdown', 'value'),
-        Input('balance-chart', 'relayoutData')
+        Input('combo-metric-dropdown', 'value')
     )
     def update_chart(
         start_date,
@@ -78,8 +104,7 @@ def register_callbacks(app, df):
         selected_pair,
         selected_robo_type,
         selected_robo_name,
-        selected_combo_metric,
-        relayout_data
+        selected_combo_metric
     ):
 
         filtered, daily = build_daily_and_balance(
@@ -90,17 +115,6 @@ def register_callbacks(app, df):
             selected_robo_type,
             selected_robo_name
         )
-
-        zoom_start, zoom_end = get_zoom_range(relayout_data)
-
-        if zoom_start is not None and zoom_end is not None:
-
-            filtered = filtered[
-                (filtered['Close Time'] >= zoom_start) &
-                (filtered['Close Time'] <= zoom_end)
-            ].copy()
-
-            daily = filtered
 
         return build_chart(
             filtered,
