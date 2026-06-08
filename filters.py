@@ -1,3 +1,11 @@
+def is_all_selected(selected_values):
+
+    return (
+        not selected_values or
+        'ALL' in selected_values
+    )
+
+
 def create_options(values, first_label):
 
     return (
@@ -47,38 +55,38 @@ def get_dependent_filter_options(df,
 
     pair_df = df.copy()
 
-    if selected_robo_type != 'ALL':
+    if not is_all_selected(selected_robo_type):
         pair_df = pair_df[
-            pair_df['Robo_Type'] == selected_robo_type
+            pair_df['Robo_Type'].isin(selected_robo_type)
         ]
 
-    if selected_robo_name != 'ALL':
+    if not is_all_selected(selected_robo_name):
         pair_df = pair_df[
-            pair_df['Robo_Name'] == selected_robo_name
+            pair_df['Robo_Name'].isin(selected_robo_name)
         ]
 
     robo_type_df = df.copy()
 
-    if selected_pair != 'ALL':
+    if not is_all_selected(selected_pair):
         robo_type_df = robo_type_df[
-            robo_type_df['Item'] == selected_pair
+            robo_type_df['Item'].isin(selected_pair)
         ]
 
-    if selected_robo_name != 'ALL':
+    if not is_all_selected(selected_robo_name):
         robo_type_df = robo_type_df[
-            robo_type_df['Robo_Name'] == selected_robo_name
+            robo_type_df['Robo_Name'].isin(selected_robo_name)
         ]
 
     robo_name_df = df.copy()
 
-    if selected_pair != 'ALL':
+    if not is_all_selected(selected_pair):
         robo_name_df = robo_name_df[
-            robo_name_df['Item'] == selected_pair
+            robo_name_df['Item'].isin(selected_pair)
         ]
 
-    if selected_robo_type != 'ALL':
+    if not is_all_selected(selected_robo_type):
         robo_name_df = robo_name_df[
-            robo_name_df['Robo_Type'] == selected_robo_type
+            robo_name_df['Robo_Type'].isin(selected_robo_type)
         ]
 
     pair_options = create_options(

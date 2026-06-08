@@ -1,6 +1,14 @@
 import pandas as pd
 
 
+def is_all_selected(selected_values):
+
+    return (
+        not selected_values or
+        'ALL' in selected_values
+    )
+
+
 def build_daily_and_balance(df,
                             start_date,
                             end_date,
@@ -22,19 +30,19 @@ def build_daily_and_balance(df,
         (df['Close Time'] <= end_date)
     ].copy()
 
-    if selected_pair != 'ALL':
+    if not is_all_selected(selected_pair):
         filtered = filtered[
-            filtered['Item'] == selected_pair
+            filtered['Item'].isin(selected_pair)
         ]
 
-    if selected_robo_type != 'ALL':
+    if not is_all_selected(selected_robo_type):
         filtered = filtered[
-            filtered['Robo_Type'] == selected_robo_type
+            filtered['Robo_Type'].isin(selected_robo_type)
         ]
 
-    if selected_robo_name != 'ALL':
+    if not is_all_selected(selected_robo_name):
         filtered = filtered[
-            filtered['Robo_Name'] == selected_robo_name
+            filtered['Robo_Name'].isin(selected_robo_name)
         ]
 
     if filtered.empty:
@@ -70,7 +78,7 @@ def build_daily_and_balance(df,
         filtered['Robo_Type']
         .apply(
             lambda x:
-            f"{x} ({final_balance.get(x,0):.2f})"
+            f"{x} ({final_balance.get(x, 0):.2f})"
         )
     )
 

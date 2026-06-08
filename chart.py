@@ -57,6 +57,17 @@ def get_streaks(df):
     )
 
 
+def get_value_color(value):
+
+    if value > 0:
+        return "#0a7a28"
+
+    if value < 0:
+        return "#b00020"
+
+    return "#333"
+
+
 def build_chart(filtered, daily, selected_pair, selected_combo_metric):
 
     stats_daily = daily.groupby('Robo_Type').agg(
@@ -429,6 +440,69 @@ def build_chart(filtered, daily, selected_pair, selected_combo_metric):
         col=1
     )
 
+    table_fill_colors = [
+        [
+            "#f2f2f2" if robo_type == "TOTAL" else "white"
+            for robo_type in table_robo_types
+        ]
+        for _ in range(13)
+    ]
+
+    table_font_colors = [
+        [
+            "black"
+            for _ in table_robo_types
+        ],
+        [
+            get_value_color(value)
+            for value in balance_vals
+        ],
+        [
+            "black"
+            for _ in table_robo_types
+        ],
+        [
+            "black"
+            for _ in table_robo_types
+        ],
+        [
+            "black"
+            for _ in table_robo_types
+        ],
+        [
+            get_value_color(value)
+            for value in roi_vals
+        ],
+        [
+            "#0a7a28" if value > 1 else "#b00020" if value < 1 else "#333"
+            for value in profit_factor_vals
+        ],
+        [
+            "black"
+            for _ in table_robo_types
+        ],
+        [
+            "black"
+            for _ in table_robo_types
+        ],
+        [
+            get_value_color(value)
+            for value in max_loss_sum_vals
+        ],
+        [
+            get_value_color(value)
+            for value in max_win_sum_vals
+        ],
+        [
+            get_value_color(value)
+            for value in best_trade_vals
+        ],
+        [
+            get_value_color(value)
+            for value in worst_trade_vals
+        ]
+    ]
+
     fig.add_trace(
         go.Table(
             header=dict(
@@ -447,7 +521,11 @@ def build_chart(filtered, daily, selected_pair, selected_combo_metric):
                     "Largest Profit Trade",
                     "Largest Loss Trade"
                 ],
-                fill_color="lightgrey",
+                fill_color="black",
+                font=dict(
+                    color="white",
+                    size=11
+                ),
                 align="center"
             ),
             cells=dict(
@@ -466,6 +544,11 @@ def build_chart(filtered, daily, selected_pair, selected_combo_metric):
                     best_trade_vals,
                     worst_trade_vals
                 ],
+                fill_color=table_fill_colors,
+                font=dict(
+                    color=table_font_colors,
+                    size=11
+                ),
                 align="center"
             )
         ),
