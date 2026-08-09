@@ -8,7 +8,7 @@ def load_data(file_path):
     df = None
 
     # =========================
-    # НАХОДИМ БЛОК Closed Transactions → Open Trades
+    # НАХОДИМ БЛОК Closed Transactions -> Open Trades
     # =========================
 
     for table in tables:
@@ -255,6 +255,31 @@ def load_data(file_path):
         df['Swap'].fillna(0) +
         df['Commission'].fillna(0)
     )
+
+    # =========================
+    # SWAP / HOLDING METRICS
+    # =========================
+
+    df['Holding_Hours'] = (
+        df['Close Time'] - df['Open Time']
+    ).dt.total_seconds() / 3600
+
+    df['Holding_Days'] = df['Holding_Hours'] / 24
+
+    df['Net_PL_No_Swap'] = (
+        df['Net_PL'] -
+        df['Swap'].fillna(0)
+    )
+
+    df['Swap_Per_Day'] = (
+        df['Swap'].fillna(0) /
+        df['Holding_Days'].where(df['Holding_Days'] > 0)
+    ).fillna(0)
+
+    df['Swap_Share'] = (
+        df['Swap'].fillna(0) /
+        df['Net_PL'].abs().where(df['Net_PL'].abs() > 0)
+    ).fillna(0)
 
     df['Close_Date'] = df['Close Time'].dt.date
 

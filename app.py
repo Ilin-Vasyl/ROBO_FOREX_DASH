@@ -5,7 +5,7 @@ from filters import get_filter_options
 from callbacks import register_callbacks
 
 # =========================
-# ЗАГРУЗКА
+# Ð—ÐÐ“Ð Ð£Ð—ÐšÐ
 # =========================
 
 file_path = "t1_data.htm"
@@ -13,7 +13,7 @@ file_path = "t1_data.htm"
 df = load_data(file_path)
 
 # =========================
-# СПИСКИ ДЛЯ ФИЛЬТРОВ
+# Ð¡ÐŸÐ˜Ð¡ÐšÐ˜ Ð”Ð›Ð¯ Ð¤Ð˜Ð›Ð¬Ð¢Ð ÐžÐ’
 # =========================
 
 (
@@ -28,6 +28,51 @@ df = load_data(file_path)
 
 app = Dash(__name__)
 server = app.server
+
+button_style = {
+    'backgroundColor': 'black',
+    'color': 'white',
+    'border': '1px solid black',
+    'borderRadius': '4px',
+    'padding': '10px 16px',
+    'fontWeight': '600',
+    'cursor': 'pointer',
+    'whiteSpace': 'nowrap'
+}
+
+modal_button_style = {
+    'backgroundColor': 'black',
+    'color': 'white',
+    'border': '1px solid black',
+    'borderRadius': '4px',
+    'padding': '8px 12px',
+    'cursor': 'pointer'
+}
+
+modal_panel_style = {
+    'backgroundColor': 'white',
+    'border': '1px solid #d0d0d0',
+    'borderRadius': '8px',
+    'boxShadow': '0 12px 40px rgba(0,0,0,0.22)',
+    'padding': '20px',
+    'width': '900px',
+    'maxWidth': '94vw',
+    'maxHeight': '82vh',
+    'overflowY': 'auto'
+}
+
+modal_overlay_style = {
+    'display': 'none',
+    'position': 'fixed',
+    'top': '0',
+    'left': '0',
+    'right': '0',
+    'bottom': '0',
+    'zIndex': '1000',
+    'backgroundColor': 'rgba(0,0,0,0.25)',
+    'alignItems': 'center',
+    'justifyContent': 'center'
+}
 
 app.layout = html.Div([
 
@@ -139,21 +184,28 @@ app.layout = html.Div([
                 "Trade Summary",
                 id='trade-summary-button',
                 n_clicks=0,
-                style={
-                    'backgroundColor': 'black',
-                    'color': 'white',
-                    'border': '1px solid black',
-                    'borderRadius': '4px',
-                    'padding': '10px 16px',
-                    'fontWeight': '600',
-                    'cursor': 'pointer',
-                    'whiteSpace': 'nowrap'
-                }
+                style=button_style
+            ),
+
+            html.Button(
+                "Swap & Holding",
+                id='swap-holding-button',
+                n_clicks=0,
+                style=button_style
+            ),
+
+            html.Button(
+                "Trades",
+                id='trades-button',
+                n_clicks=0,
+                style=button_style
             )
 
         ],
         style={
-            'minWidth': '150px'
+            'display': 'flex',
+            'gap': '10px',
+            'minWidth': '310px'
         }),
 
         html.Div([
@@ -217,14 +269,7 @@ app.layout = html.Div([
                         "Close",
                         id='trade-summary-close',
                         n_clicks=0,
-                        style={
-                            'backgroundColor': 'black',
-                            'color': 'white',
-                            'border': '1px solid black',
-                            'borderRadius': '4px',
-                            'padding': '8px 12px',
-                            'cursor': 'pointer'
-                        }
+                        style=modal_button_style
                     )
 
                 ],
@@ -242,30 +287,112 @@ app.layout = html.Div([
 
             ],
             style={
-                'backgroundColor': 'white',
-                'border': '1px solid #d0d0d0',
-                'borderRadius': '8px',
-                'boxShadow': '0 12px 40px rgba(0,0,0,0.22)',
-                'padding': '20px',
+                **modal_panel_style,
                 'width': '760px',
-                'maxWidth': '90vw',
-                'maxHeight': '75vh',
-                'overflowY': 'auto'
+                'maxHeight': '75vh'
             })
 
         ],
-        style={
-            'display': 'none',
-            'position': 'fixed',
-            'top': '0',
-            'left': '0',
-            'right': '0',
-            'bottom': '0',
-            'zIndex': '1000',
-            'backgroundColor': 'rgba(0,0,0,0.25)',
-            'alignItems': 'center',
-            'justifyContent': 'center'
-        }
+        style=modal_overlay_style
+    ),
+
+    html.Div(
+        id='swap-holding-modal',
+        children=[
+
+            html.Div([
+
+                html.Div([
+
+                    html.H3(
+                        "Swap & Holding Analysis",
+                        style={
+                            'margin': '0',
+                            'fontSize': '20px'
+                        }
+                    ),
+
+                    html.Button(
+                        "Close",
+                        id='swap-holding-close',
+                        n_clicks=0,
+                        style=modal_button_style
+                    )
+
+                ],
+                style={
+                    'display': 'flex',
+                    'justifyContent': 'space-between',
+                    'alignItems': 'center',
+                    'gap': '20px',
+                    'marginBottom': '16px'
+                }),
+
+                html.Div(
+                    id='swap-holding-content'
+                )
+
+            ],
+            style=modal_panel_style)
+
+        ],
+        style=modal_overlay_style
+    ),
+
+    html.Div(
+        id='trades-modal',
+        children=[
+
+            html.Div([
+
+                html.Div([
+
+                    html.H3(
+                        "Trades",
+                        style={
+                            'margin': '0',
+                            'fontSize': '20px'
+                        }
+                    ),
+
+                    html.Button(
+                        "Close",
+                        id='trades-close',
+                        n_clicks=0,
+                        style=modal_button_style
+                    )
+
+                ],
+                style={
+                    'display': 'flex',
+                    'justifyContent': 'space-between',
+                    'alignItems': 'center',
+                    'gap': '20px',
+                    'marginBottom': '16px'
+                }),
+
+                html.Div(
+                    id='trades-content',
+                    style={
+                        'flex': '1',
+                        'overflow': 'auto',
+                        'minHeight': '0'
+                    }
+                )
+
+            ],
+            style={
+                **modal_panel_style,
+                'width': '95vw',
+                'maxWidth': '1500px',
+                'maxHeight': '75vh',
+                'overflow': 'hidden',
+                'display': 'flex',
+                'flexDirection': 'column'
+            })
+
+        ],
+        style=modal_overlay_style
     )
 
 ])

@@ -1,8 +1,12 @@
 import pandas as pd
 
-from analytics import build_daily_and_balance
-from chart import build_chart
-from dash import Input, Output, State, ctx, html, no_update
+from analytics import (
+    build_daily_and_balance,
+    build_swap_holding_analysis,
+    filter_trades
+)
+from chart import build_chart, build_swap_holding_chart
+from dash import Input, Output, State, ctx, dcc, html, no_update
 
 from filters import get_dependent_filter_options
 
@@ -249,6 +253,213 @@ def build_summary_table(filtered, end_date):
     })
 
 
+def build_swap_holding_table(summary):
+
+    if summary.empty:
+        return html.Div(
+            "No trades for selected filters.",
+            style={
+                'fontSize': '14px',
+                'color': '#555'
+            }
+        )
+
+    columns = [
+        (
+            'Robo_Type',
+            'Strategy'
+        ),
+        (
+            'Trades',
+            'Trades'
+        ),
+        (
+            'Net_PL',
+            'Net P/L'
+        ),
+        (
+            'Swap',
+            'Swap'
+        ),
+        (
+            'Net_PL_No_Swap',
+            'Net P/L no swap'
+        ),
+        (
+            'Avg_Holding_Days',
+            'Avg hold days'
+        ),
+        (
+            'Median_Holding_Days',
+            'Median hold days'
+        ),
+        (
+            'Avg_Swap',
+            'Avg swap'
+        ),
+        (
+            'Avg_Swap_Per_Day',
+            'Avg swap/day'
+        ),
+        (
+            'Swap_Impact_Pct',
+            'Swap impact %'
+        )
+    ]
+
+    def format_cell(column, value):
+
+        if column in ['Robo_Type']:
+            return value
+
+        if column == 'Trades':
+            return f"{int(value)}"
+
+        if column == 'Swap_Impact_Pct':
+            return f"{value:.2f}%"
+
+        return format_money(value)
+
+    return html.Table([
+
+        html.Thead(
+            html.Tr([
+                html.Th(
+                    label,
+                    style={
+                        'textAlign': 'right' if key != 'Robo_Type' else 'left',
+                        'padding': '9px',
+                        'backgroundColor': 'black',
+                        'color': 'white',
+                        'borderBottom': '1px solid #d8d8d8'
+                    }
+                )
+                for key, label in columns
+            ])
+        ),
+
+        html.Tbody([
+            html.Tr([
+                html.Td(
+                    format_cell(key, row[key]),
+                    style={
+                        'padding': '9px',
+                        'textAlign': 'right' if key != 'Robo_Type' else 'left',
+                        'fontWeight': '700' if row['Robo_Type'] == 'TOTAL' else '400',
+                        'backgroundColor': '#f2f2f2' if row['Robo_Type'] == 'TOTAL' else 'white',
+                        'color': (
+                            get_value_color(row[key])
+                            if key in [
+                                'Net_PL',
+                                'Swap',
+                                'Net_PL_No_Swap',
+                                'Avg_Swap',
+                                'Avg_Swap_Per_Day',
+                                'Swap_Impact_Pct'
+                            ]
+                            else '#333'
+                        ),
+                        'borderBottom': '1px solid #eeeeee'
+                    }
+                )
+                for key, _ in columns
+            ])
+            for _, row in summary.iterrows()
+        ])
+
+    ],
+    style={
+        'width': '100%',
+        'borderCollapse': 'collapse',
+        'fontSize': '13px',
+        'marginBottom': '18px'
+    })
+
+
+def build_trades_table(filtered):
+
+    if filtered.empty:
+        return html.Div(
+            "No trades for selected filters.",
+            style={
+                'fontSize': '14px',
+                'color': '#555'
+            }
+        )
+
+    display_df = filtered.copy()
+    display_df = display_df.drop(
+        columns=['Holding_Hours'],
+        errors='ignore'
+    )
+
+    if 'Holding_Days' in display_df.columns:
+        display_df = display_df.loc[:, :'Holding_Days']
+
+    for column in display_df.select_dtypes(
+        include=['datetime', 'datetimetz']
+    ).columns:
+        display_df[column] = display_df[column].dt.strftime(
+            '%Y-%m-%d %H:%M:%S'
+        )
+
+    for column, decimals in [
+        ('Net_PL', 2),
+        ('Holding_Days', 1)
+    ]:
+        if column in display_df.columns:
+            display_df[column] = display_df[column].map(
+                lambda value: f"{value:.{decimals}f}"
+                if pd.notna(value)
+                else ''
+            )
+
+    return html.Table([
+
+        html.Thead(
+            html.Tr([
+                html.Th(
+                    column,
+                    style={
+                        'padding': '9px',
+                        'textAlign': 'left',
+                        'backgroundColor': 'black',
+                        'color': 'white',
+                        'borderBottom': '1px solid #d8d8d8',
+                        'whiteSpace': 'nowrap',
+                        'position': 'sticky',
+                        'top': '0',
+                        'zIndex': '1'
+                    }
+                )
+                for column in display_df.columns
+            ])
+        ),
+
+        html.Tbody([
+            html.Tr([
+                html.Td(
+                    value,
+                    style={
+                        'padding': '8px 9px',
+                        'borderBottom': '1px solid #eeeeee',
+                        'whiteSpace': 'nowrap'
+                    }
+                )
+                for value in row
+            ])
+            for row in display_df.itertuples(index=False, name=None)
+        ])
+
+    ],
+    style={
+        'width': '100%',
+        'borderCollapse': 'collapse',
+        'fontSize': '13px',
+        'minWidth': 'max-content'
+    })
+
+
 def register_callbacks(app, df):
 
     @app.callback(
@@ -430,4 +641,125 @@ def register_callbacks(app, df):
         return (
             modal_style,
             content
+        )
+
+    @app.callback(
+        Output('swap-holding-modal', 'style'),
+        Output('swap-holding-content', 'children'),
+        Input('swap-holding-button', 'n_clicks'),
+        Input('swap-holding-close', 'n_clicks'),
+        Input('date-picker', 'start_date'),
+        Input('date-picker', 'end_date'),
+        Input('pair-dropdown', 'value'),
+        Input('robo-type-dropdown', 'value'),
+        Input('robo-name-dropdown', 'value'),
+        State('swap-holding-modal', 'style')
+    )
+    def update_swap_holding_modal(
+        open_clicks,
+        close_clicks,
+        start_date,
+        end_date,
+        selected_pair,
+        selected_robo_type,
+        selected_robo_name,
+        modal_style
+    ):
+
+        modal_style = dict(modal_style or {})
+
+        triggered_id = ctx.triggered_id
+
+        if triggered_id == 'swap-holding-close':
+            modal_style['display'] = 'none'
+            return (
+                modal_style,
+                no_update
+            )
+
+        if triggered_id == 'swap-holding-button':
+            modal_style['display'] = 'flex'
+
+        filtered, summary = build_swap_holding_analysis(
+            df,
+            start_date,
+            end_date,
+            selected_pair,
+            selected_robo_type,
+            selected_robo_name
+        )
+
+        content = html.Div([
+
+            build_swap_holding_table(
+                summary
+            ),
+
+            dcc.Graph(
+                figure=build_swap_holding_chart(
+                    filtered,
+                    summary
+                ),
+                config={
+                    'responsive': True
+                },
+                style={
+                    'width': '100%'
+                }
+            )
+
+        ])
+
+        return (
+            modal_style,
+            content
+        )
+
+    @app.callback(
+        Output('trades-modal', 'style'),
+        Output('trades-content', 'children'),
+        Input('trades-button', 'n_clicks'),
+        Input('trades-close', 'n_clicks'),
+        Input('date-picker', 'start_date'),
+        Input('date-picker', 'end_date'),
+        Input('pair-dropdown', 'value'),
+        Input('robo-type-dropdown', 'value'),
+        Input('robo-name-dropdown', 'value'),
+        State('trades-modal', 'style')
+    )
+    def update_trades_modal(
+        open_clicks,
+        close_clicks,
+        start_date,
+        end_date,
+        selected_pair,
+        selected_robo_type,
+        selected_robo_name,
+        modal_style
+    ):
+
+        modal_style = dict(modal_style or {})
+
+        if ctx.triggered_id == 'trades-close':
+            modal_style['display'] = 'none'
+            return (
+                modal_style,
+                no_update
+            )
+
+        if ctx.triggered_id == 'trades-button':
+            modal_style['display'] = 'flex'
+
+        filtered = filter_trades(
+            df,
+            start_date,
+            end_date,
+            selected_pair,
+            selected_robo_type,
+            selected_robo_name
+        )
+
+        return (
+            modal_style,
+            build_trades_table(filtered)
         )

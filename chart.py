@@ -245,7 +245,7 @@ def build_chart(filtered, daily, selected_pair, selected_combo_metric):
     roi_vals = [round(x, 2) for x in roi_vals]
 
     daily = daily.copy()
-    daily['Robo_Name'] = daily['Robo_Type']
+    label_column = 'Robo_Label' if 'Robo_Label' in daily.columns else 'Robo_Type'
 
     fig = make_subplots(
         rows=2,
@@ -274,10 +274,15 @@ def build_chart(filtered, daily, selected_pair, selected_combo_metric):
     else:
         chart_end_date = None
 
-    for name in robo_types:
+    for robo_type in robo_types:
 
-        df_sub = daily[daily['Robo_Name'] == name].copy()
+        df_sub = daily[daily['Robo_Type'] == robo_type].copy()
         df_sub = df_sub.sort_values('Close_Date')
+        trace_name = (
+            df_sub[label_column].iloc[0]
+            if len(df_sub) != 0
+            else robo_type
+        )
 
         df_curve = df_sub.groupby(
             'Close_Date',
@@ -315,7 +320,7 @@ def build_chart(filtered, daily, selected_pair, selected_combo_metric):
                 x=df_curve['Close_Date'],
                 y=df_curve['Balance'],
                 mode='lines',
-                name=name
+                name=trace_name
             ),
             row=1,
             col=1
@@ -570,6 +575,210 @@ def build_chart(filtered, daily, selected_pair, selected_combo_metric):
             dash="dash"
         ),
         layer="above"
+    )
+
+    return fig
+
+
+def build_swap_holding_chart(filtered, summary):
+
+    fig = make_subplots(
+        rows=3,
+        cols=1,
+        row_heights=[0.34, 0.33, 0.33],
+        vertical_spacing=0.12,
+        specs=[
+            [{"type": "xy"}],
+            [{"type": "xy"}],
+            [{"type": "xy"}]
+        ],
+        subplot_titles=[
+            "Holding Days vs Net P/L",
+            "Holding Days vs Swap",
+            "Strategy Result With / Without Swap"
+        ]
+    )
+
+    fig.update_layout(
+        height=820,
+        margin=dict(
+            l=50,
+            r=30,
+            t=60,
+            b=50
+        ),
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1.02,
+            xanchor="left",
+            x=0
+        )
+    )
+
+    if filtered.empty:
+        return fig
+
+    order = [
+        "Trend",
+        "ContrTrend",
+        "ContrTrend_M"
+    ]
+
+    robo_types = [
+        robo_type
+        for robo_type in order
+        if robo_type in filtered['Robo_Type'].unique()
+    ]
+
+    colors = {
+        "Trend": "#1f77b4",
+        "ContrTrend": "#ff7f0e",
+        "ContrTrend_M": "#2ca02c"
+    }
+
+    for robo_type in robo_types:
+
+        df_sub = filtered[
+            filtered['Robo_Type'] == robo_type
+        ]
+
+        fig.add_trace(
+            go.Scatter(
+                x=df_sub['Holding_Days'],
+                y=df_sub['Net_PL'],
+                mode='markers',
+                name=robo_type,
+                marker=dict(
+                    color=colors.get(robo_type),
+                    size=7,
+                    opacity=0.7
+                ),
+                customdata=df_sub[
+                    [
+                        'Item',
+                        'Robo_Name',
+                        'Swap',
+                        'Net_PL_No_Swap'
+                    ]
+                ],
+                hovertemplate=(
+                    "Holding days: %{x:.2f}<br>"
+                    "Net P/L: %{y:.2f}<br>"
+                    "Pair: %{customdata[0]}<br>"
+                    "Robot: %{customdata[1]}<br>"
+                    "Swap: %{customdata[2]:.2f}<br>"
+                    "Net P/L no swap: %{customdata[3]:.2f}"
+                    "<extra></extra>"
+                )
+            ),
+            row=1,
+            col=1
+        )
+
+        fig.add_trace(
+            go.Scatter(
+                x=df_sub['Holding_Days'],
+                y=df_sub['Swap'],
+                mode='markers',
+                name=robo_type,
+                marker=dict(
+                    color=colors.get(robo_type),
+                    size=7,
+                    opacity=0.7
+                ),
+                showlegend=False,
+                customdata=df_sub[
+                    [
+                        'Item',
+                        'Robo_Name',
+                        'Net_PL'
+                    ]
+                ],
+                hovertemplate=(
+                    "Holding days: %{x:.2f}<br>"
+                    "Swap: %{y:.2f}<br>"
+                    "Pair: %{customdata[0]}<br>"
+                    "Robot: %{customdata[1]}<br>"
+                    "Net P/L: %{customdata[2]:.2f}"
+                    "<extra></extra>"
+                )
+            ),
+            row=2,
+            col=1
+        )
+
+    chart_summary = summary[
+        summary['Robo_Type'] != 'TOTAL'
+    ].copy()
+
+    fig.add_trace(
+        go.Bar(
+            x=chart_summary['Robo_Type'],
+            y=chart_summary['Net_PL'],
+            name='Net P/L',
+            marker_color="#1f77b4"
+        ),
+        row=3,
+        col=1
+    )
+
+    fig.add_trace(
+        go.Bar(
+            x=chart_summary['Robo_Type'],
+            y=chart_summary['Swap'],
+            name='Swap',
+            marker_color="#b00020"
+        ),
+        row=3,
+        col=1
+    )
+
+    fig.add_trace(
+        go.Bar(
+            x=chart_summary['Robo_Type'],
+            y=chart_summary['Net_PL_No_Swap'],
+            name='Net P/L no swap',
+            marker_color="#0a7a28"
+        ),
+        row=3,
+        col=1
+    )
+
+    fig.update_xaxes(
+        title_text="Holding days",
+        row=1,
+        col=1
+    )
+
+    fig.update_yaxes(
+        title_text="Net P/L",
+        zeroline=True,
+        zerolinecolor="#999",
+        row=1,
+        col=1
+    )
+
+    fig.update_xaxes(
+        title_text="Holding days",
+        row=2,
+        col=1
+    )
+
+    fig.update_yaxes(
+        title_text="Swap",
+        zeroline=True,
+        zerolinecolor="#999",
+        row=2,
+        col=1
+    )
+
+    fig.update_yaxes(
+        title_text="Value",
+        zeroline=True,
+        zerolinecolor="#999",
+        row=3,
+        col=1
     )
 
     return fig
