@@ -192,13 +192,6 @@ app.layout = html.Div([
                 id='swap-holding-button',
                 n_clicks=0,
                 style=button_style
-            ),
-
-            html.Button(
-                "Trades",
-                id='trades-button',
-                n_clicks=0,
-                style=button_style
             )
 
         ],
@@ -337,62 +330,6 @@ app.layout = html.Div([
 
         ],
         style=modal_overlay_style
-    ),
-
-    html.Div(
-        id='trades-modal',
-        children=[
-
-            html.Div([
-
-                html.Div([
-
-                    html.H3(
-                        "Trades",
-                        style={
-                            'margin': '0',
-                            'fontSize': '20px'
-                        }
-                    ),
-
-                    html.Button(
-                        "Close",
-                        id='trades-close',
-                        n_clicks=0,
-                        style=modal_button_style
-                    )
-
-                ],
-                style={
-                    'display': 'flex',
-                    'justifyContent': 'space-between',
-                    'alignItems': 'center',
-                    'gap': '20px',
-                    'marginBottom': '16px'
-                }),
-
-                html.Div(
-                    id='trades-content',
-                    style={
-                        'flex': '1',
-                        'overflow': 'auto',
-                        'minHeight': '0'
-                    }
-                )
-
-            ],
-            style={
-                **modal_panel_style,
-                'width': '95vw',
-                'maxWidth': '1500px',
-                'maxHeight': '75vh',
-                'overflow': 'hidden',
-                'display': 'flex',
-                'flexDirection': 'column'
-            })
-
-        ],
-        style=modal_overlay_style
     )
 
 ])
@@ -412,3 +349,5 @@ if __name__ == '__main__':
     app.run(
         debug=True
     )
+
+

@@ -125,10 +125,13 @@ def build_swap_holding_analysis(df,
 
     filtered = filtered.copy()
 
-    if 'Holding_Days' not in filtered.columns:
-        filtered['Holding_Days'] = (
+    if 'Holding_Hours' not in filtered.columns:
+        filtered['Holding_Hours'] = (
             filtered['Close Time'] - filtered['Open Time']
-        ).dt.total_seconds() / 86400
+        ).dt.total_seconds() / 3600
+
+    if 'Holding_Days' not in filtered.columns:
+        filtered['Holding_Days'] = filtered['Holding_Hours'] / 24
 
     if 'Net_PL_No_Swap' not in filtered.columns:
         filtered['Net_PL_No_Swap'] = (
@@ -215,4 +218,5 @@ def build_swap_holding_analysis(df,
         filtered,
         summary
     )
+
 
