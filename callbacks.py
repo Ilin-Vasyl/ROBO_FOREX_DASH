@@ -1,8 +1,12 @@
 import pandas as pd
 
-from analytics import build_daily_and_balance, build_swap_holding_analysis
+from analytics import (
+    build_daily_and_balance,
+    build_swap_holding_analysis,
+    filter_trades
+)
 from chart import build_chart, build_swap_holding_chart
-from dash import Input, Output, State, ctx, dcc, html, no_update
+from dash import Input, Output, State, ctx, dash_table, dcc, html, no_update
 
 from filters import get_dependent_filter_options
 
@@ -372,6 +376,99 @@ def build_swap_holding_table(summary):
     })
 
 
+def build_trades_table(filtered):
+
+    if filtered.empty:
+        return html.Div(
+            "No trades for selected filters.",
+            style={
+                'fontSize': '14px',
+                'color': '#555'
+            }
+        )
+
+    display_df = filtered.drop(
+        columns=[
+            'Holding_Hours',
+            'Holding_Days',
+            'Net_PL_No_Swap',
+            'Swap_Per_Day',
+            'Swap_Share'
+        ],
+        errors='ignore'
+    ).copy()
+
+    for column in display_df.select_dtypes(
+        include=['datetime', 'datetimetz']
+    ).columns:
+        display_df[column] = display_df[column].dt.strftime(
+            '%Y-%m-%d %H:%M:%S'
+        )
+
+    for column, decimals in [
+        ('Net_PL', 2),
+        ('Holding_Days', 1)
+    ]:
+        if column in display_df.columns:
+            display_df[column] = display_df[column].map(
+                lambda value: round(value, decimals)
+                if pd.notna(value)
+                else None
+            )
+
+    column_widths = []
+
+    for column in display_df.columns:
+        value_width = display_df[column].fillna('').astype(str).str.len().max()
+        width = max(len(column), value_width) + 2
+
+        column_widths.append({
+            'if': {
+                'column_id': column
+            },
+            'minWidth': f'{width}ch',
+            'width': f'{width}ch',
+            'maxWidth': f'{width}ch'
+        })
+
+    return dash_table.DataTable(
+        columns=[
+            {
+                'name': column,
+                'id': column
+            }
+            for column in display_df.columns
+        ],
+        data=display_df.to_dict('records'),
+        page_action='native',
+        page_current=0,
+        page_size=100,
+        fixed_rows={'headers': True},
+        style_table={
+            'minWidth': '100%',
+            'overflowX': 'auto'
+        },
+        style_header={
+            'backgroundColor': 'black',
+            'color': 'white',
+            'fontWeight': 'bold',
+            'padding': '9px',
+            'textAlign': 'left',
+            'whiteSpace': 'nowrap'
+        },
+        style_cell={
+            'padding': '8px 9px',
+            'textAlign': 'left',
+            'whiteSpace': 'nowrap',
+            'fontSize': '13px'
+        },
+        style_cell_conditional=column_widths,
+        style_data={
+            'borderBottom': '1px solid #eeeeee'
+        }
+    )
+
+
 def register_callbacks(app, df):
 
     @app.callback(
@@ -627,4 +724,51 @@ def register_callbacks(app, df):
             content
         )
 
+    @app.callback(
+        Output('trades-modal', 'style'),
+        Output('trades-content', 'children'),
+        Input('trades-button', 'n_clicks'),
+        Input('trades-close', 'n_clicks'),
+        Input('date-picker', 'start_date'),
+        Input('date-picker', 'end_date'),
+        Input('pair-dropdown', 'value'),
+        Input('robo-type-dropdown', 'value'),
+        Input('robo-name-dropdown', 'value'),
+        State('trades-modal', 'style')
+    )
+    def update_trades_modal(
+        open_clicks,
+        close_clicks,
+        start_date,
+        end_date,
+        selected_pair,
+        selected_robo_type,
+        selected_robo_name,
+        modal_style
+    ):
 
+        modal_style = dict(modal_style or {})
+
+        if ctx.triggered_id == 'trades-close':
+            modal_style['display'] = 'none'
+            return (
+                modal_style,
+                no_update
+            )
+
+        if ctx.triggered_id == 'trades-button':
+            modal_style['display'] = 'flex'
+
+        filtered = filter_trades(
+            df,
+            start_date,
+            end_date,
+            selected_pair,
+            selected_robo_type,
+            selected_robo_name
+        )
+
+        return (
+            modal_style,
+            build_trades_table(filtered)
+        )

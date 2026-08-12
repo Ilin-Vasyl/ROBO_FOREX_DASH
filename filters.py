@@ -115,5 +115,3 @@ def get_dependent_filter_options(df,
         robo_type_options,
         robo_name_options
     )
-
-

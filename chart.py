@@ -782,5 +782,3 @@ def build_swap_holding_chart(filtered, summary):
     )
 
     return fig
-
-
