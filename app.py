@@ -40,6 +40,17 @@ button_style = {
     'whiteSpace': 'nowrap'
 }
 
+swap_filter_button_style = {
+    'backgroundColor': '#6c757d',
+    'color': 'white',
+    'border': '1px solid #6c757d',
+    'borderRadius': '4px',
+    'padding': '10px 16px',
+    'fontWeight': '600',
+    'cursor': 'pointer',
+    'whiteSpace': 'nowrap'
+}
+
 modal_button_style = {
     'backgroundColor': 'black',
     'color': 'white',
@@ -127,7 +138,7 @@ app.layout = html.Div([
                 ],
                 style={
                     'width': '10%',
-                    'minWidth': '180px'
+                    'minWidth': '120px'
                 }),
 
                 html.Div([
@@ -143,7 +154,7 @@ app.layout = html.Div([
                 ],
                 style={
                     'width': '10%',
-                    'minWidth': '180px'
+                    'minWidth': '150px'
                 }),
 
                 html.Div([
@@ -159,7 +170,7 @@ app.layout = html.Div([
                 ],
                 style={
                     'width': '10%',
-                    'minWidth': '220px'
+                    'minWidth': '120px'
                 })
 
             ],
@@ -185,6 +196,27 @@ app.layout = html.Div([
                 id='trade-summary-button',
                 n_clicks=0,
                 style=button_style
+            ),
+
+            html.Button(
+                "Exclude Swap: Off",
+                id='exclude-swap-button',
+                n_clicks=0,
+                style=swap_filter_button_style
+            ),
+
+            html.Button(
+                "Buy: Off",
+                id='buy-filter-button',
+                n_clicks=0,
+                style=swap_filter_button_style
+            ),
+
+            html.Button(
+                "Sell: Off",
+                id='sell-filter-button',
+                n_clicks=0,
+                style=swap_filter_button_style
             ),
 
             html.Button(

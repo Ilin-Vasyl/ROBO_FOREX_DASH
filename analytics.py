@@ -8,7 +8,9 @@ def filter_trades(df,
                   end_date,
                   selected_pair,
                   selected_robo_type,
-                  selected_robo_name):
+                  selected_robo_name,
+                  show_buy=False,
+                  show_sell=False):
 
     start_date = pd.to_datetime(start_date)
 
@@ -39,6 +41,23 @@ def filter_trades(df,
             filtered['Robo_Name'].isin(selected_robo_name)
         ]
 
+    if show_buy or show_sell:
+        directions = []
+
+        if show_buy:
+            directions.append('buy')
+
+        if show_sell:
+            directions.append('sell')
+
+        filtered = filtered[
+            filtered['Type']
+            .astype(str)
+            .str.strip()
+            .str.lower()
+            .isin(directions)
+        ]
+
     return filtered
 
 
@@ -47,7 +66,10 @@ def build_daily_and_balance(df,
                             end_date,
                             selected_pair,
                             selected_robo_type,
-                            selected_robo_name):
+                            selected_robo_name,
+                            exclude_swap=False,
+                            show_buy=False,
+                            show_sell=False):
 
     filtered = filter_trades(
         df,
@@ -55,13 +77,21 @@ def build_daily_and_balance(df,
         end_date,
         selected_pair,
         selected_robo_type,
-        selected_robo_name
+        selected_robo_name,
+        show_buy,
+        show_sell
     )
 
     if filtered.empty:
         return (
             filtered,
             filtered
+        )
+
+    if exclude_swap:
+        filtered['Net_PL'] = (
+            filtered['Net_PL'] -
+            filtered['Swap'].fillna(0)
         )
 
     # =========================
@@ -106,7 +136,10 @@ def build_swap_holding_analysis(df,
                                 end_date,
                                 selected_pair,
                                 selected_robo_type,
-                                selected_robo_name):
+                                selected_robo_name,
+                                exclude_swap=False,
+                                show_buy=False,
+                                show_sell=False):
 
     filtered = filter_trades(
         df,
@@ -114,7 +147,9 @@ def build_swap_holding_analysis(df,
         end_date,
         selected_pair,
         selected_robo_type,
-        selected_robo_name
+        selected_robo_name,
+        show_buy,
+        show_sell
     )
 
     if filtered.empty:
@@ -135,6 +170,9 @@ def build_swap_holding_analysis(df,
             filtered['Net_PL'] -
             filtered['Swap'].fillna(0)
         )
+
+    if exclude_swap:
+        filtered['Net_PL'] = filtered['Net_PL_No_Swap']
 
     if 'Swap_Per_Day' not in filtered.columns:
         filtered['Swap_Per_Day'] = (
@@ -187,7 +225,9 @@ def build_swap_holding_analysis(df,
     order = [
         'Trend',
         'ContrTrend',
-        'ContrTrend_M'
+        'CT+Swap',
+        'ContrTrend_M',
+        'CTM+Swap'
     ]
 
     summary['Sort_Order'] = summary['Robo_Type'].apply(

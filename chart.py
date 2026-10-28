@@ -71,6 +71,8 @@ def get_value_color(value):
 def build_chart(filtered, daily, selected_pair, selected_combo_metric):
 
     stats_daily = daily.groupby('Robo_Type').agg(
+        profit=('Profit', 'sum'),
+        swap=('Swap', 'sum'),
         net_pl=('Net_PL', 'sum'),
         win_rate=('Net_PL', lambda x: (x > 0).mean() * 100),
         gross_profit=('Net_PL', lambda x: x[x > 0].sum()),
@@ -122,8 +124,30 @@ def build_chart(filtered, daily, selected_pair, selected_combo_metric):
         ascending=True
     ).head(3)
 
-    order = ["Trend", "ContrTrend", "ContrTrend_M"]
+    order = [
+        "Trend",
+        "ContrTrend",
+        "CT+Swap",
+        "ContrTrend_M",
+        "CTM+Swap"
+    ]
     robo_types = [r for r in order if r in stats.index]
+
+    line_colors = {
+        "Trend": "#1f77b4",
+        "ContrTrend": "#ff7f0e",
+        "CT+Swap": "#ff7f0e",
+        "ContrTrend_M": "#2ca02c",
+        "CTM+Swap": "#2ca02c"
+    }
+
+    line_dashes = {
+        "Trend": "solid",
+        "ContrTrend": "solid",
+        "CT+Swap": "dashdot",
+        "ContrTrend_M": "solid",
+        "CTM+Swap": "dashdot"
+    }
 
     roi_vals = []
     profit_factor_vals = []
@@ -181,11 +205,15 @@ def build_chart(filtered, daily, selected_pair, selected_combo_metric):
             if len(df_sub) else 0
         )
 
+    profit_vals = [round(stats.loc[r, 'profit'], 2) for r in robo_types]
+    swap_vals = [round(stats.loc[r, 'swap'], 2) for r in robo_types]
     balance_vals = [round(stats.loc[r, 'net_pl'], 2) for r in robo_types]
     win_rate_vals = [round(stats.loc[r, 'win_rate'], 2) for r in robo_types]
     trade_vals = [stats.loc[r, 'trades'] for r in robo_types]
     volume_vals = [round(stats.loc[r, 'total_volume'], 2) for r in robo_types]
 
+    total_profit = stats['profit'].sum()
+    total_swap = stats['swap'].sum()
     total_net = stats['net_pl'].sum()
     total_trades = stats['trades'].sum()
     total_volume = stats['total_volume'].sum()
@@ -219,6 +247,8 @@ def build_chart(filtered, daily, selected_pair, selected_combo_metric):
 
     table_robo_types = robo_types + ["TOTAL"]
 
+    profit_vals.append(round(total_profit, 2))
+    swap_vals.append(round(total_swap, 2))
     balance_vals.append(round(total_net, 2))
     win_rate_vals.append(round(total_win_rate, 2))
     trade_vals.append(total_trades)
@@ -320,7 +350,11 @@ def build_chart(filtered, daily, selected_pair, selected_combo_metric):
                 x=df_curve['Close_Date'],
                 y=df_curve['Balance'],
                 mode='lines',
-                name=trace_name
+                name=trace_name,
+                line=dict(
+                    color=line_colors[robo_type],
+                    dash=line_dashes[robo_type]
+                )
             ),
             row=1,
             col=1
@@ -450,13 +484,21 @@ def build_chart(filtered, daily, selected_pair, selected_combo_metric):
             "#f2f2f2" if robo_type == "TOTAL" else "white"
             for robo_type in table_robo_types
         ]
-        for _ in range(13)
+        for _ in range(15)
     ]
 
     table_font_colors = [
         [
             "black"
             for _ in table_robo_types
+        ],
+        [
+            get_value_color(value)
+            for value in profit_vals
+        ],
+        [
+            get_value_color(value)
+            for value in swap_vals
         ],
         [
             get_value_color(value)
@@ -513,6 +555,8 @@ def build_chart(filtered, daily, selected_pair, selected_combo_metric):
             header=dict(
                 values=[
                     "Robo_Type",
+                    "Profit",
+                    "Swap",
                     "Balance",
                     "Profit Trades (% of total)",
                     "Trades",
@@ -536,6 +580,8 @@ def build_chart(filtered, daily, selected_pair, selected_combo_metric):
             cells=dict(
                 values=[
                     table_robo_types,
+                    profit_vals,
+                    swap_vals,
                     balance_vals,
                     win_rate_vals,
                     trade_vals,
@@ -622,7 +668,9 @@ def build_swap_holding_chart(filtered, summary):
     order = [
         "Trend",
         "ContrTrend",
-        "ContrTrend_M"
+        "CT+Swap",
+        "ContrTrend_M",
+        "CTM+Swap"
     ]
 
     robo_types = [
@@ -634,7 +682,9 @@ def build_swap_holding_chart(filtered, summary):
     colors = {
         "Trend": "#1f77b4",
         "ContrTrend": "#ff7f0e",
-        "ContrTrend_M": "#2ca02c"
+        "CT+Swap": "#ff7f0e",
+        "ContrTrend_M": "#2ca02c",
+        "CTM+Swap": "#2ca02c"
     }
 
     for robo_type in robo_types:
@@ -782,3 +832,5 @@ def build_swap_holding_chart(filtered, summary):
     )
 
     return fig
+
+

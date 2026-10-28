@@ -8,7 +8,7 @@ def load_data(file_path):
     df = None
 
     # =========================
-    # НАХОДИМ БЛОК Closed Transactions -> Open Trades
+    # ÐÐÐ¥ÐžÐ”Ð˜Ðœ Ð‘Ð›ÐžÐš Closed Transactions â†’ Open Trades
     # =========================
 
     for table in tables:
@@ -47,7 +47,7 @@ def load_data(file_path):
 
     if df is None:
         raise ValueError(
-            "Блок Closed Transactions не найден"
+            "Ð‘Ð»Ð¾Ðº Closed Transactions Ð½Ðµ Ð½Ð°Ð¹Ð´ÐµÐ½"
         )
 
     # =========================
@@ -61,7 +61,7 @@ def load_data(file_path):
     df['Robo_Name'] = ""
 
     # =========================
-    # УНИФИКАЦИЯ PRICE
+    # Ð£ÐÐ˜Ð¤Ð˜ÐšÐÐ¦Ð˜Ð¯ PRICE
     # =========================
 
     df.columns = [str(c).strip() for c in df.columns]
@@ -92,7 +92,7 @@ def load_data(file_path):
     df.columns = new_cols
 
     # =========================
-    # ПЕРЕНОС ROBO_NAME
+    # ÐŸÐ•Ð Ð•ÐÐžÐ¡ ROBO_NAME
     # =========================
 
     for i in range(1, len(df)):
@@ -129,7 +129,7 @@ def load_data(file_path):
     ]
 
     # =========================
-    # ТИПЫ ДАННЫХ
+    # Ð¢Ð˜ÐŸÐ« Ð”ÐÐÐÐ«Ð¥
     # =========================
 
     df['Ticket'] = pd.to_numeric(
@@ -193,7 +193,7 @@ def load_data(file_path):
     )
 
     # =========================
-    # ИСПРАВЛЕНИЯ ROBO NAMES
+    # Ð˜Ð¡ÐŸÐ ÐÐ’Ð›Ð•ÐÐ˜Ð¯ ROBO NAMES
     # =========================
 
     fixes = {
@@ -221,22 +221,35 @@ def load_data(file_path):
         df.loc[mask, 'Robo_Name'] = new_name
 
     # =========================
-    # ТИПЫ РОБОТОВ
+    # Ð¢Ð˜ÐŸÐ« Ð ÐžÐ‘ÐžÐ¢ÐžÐ’
     # =========================
 
     df['Robo_Type'] = ""
 
     df.loc[
+        df['Robo_Name'] == 'CT+Swap',
+        'Robo_Type'
+    ] = 'CT+Swap'
+
+    df.loc[
+        df['Robo_Name'] == 'CTM+Swap',
+        'Robo_Type'
+    ] = 'CTM+Swap'
+
+    df.loc[
+        (df['Robo_Type'] == "") &
         df['Robo_Name'].str.startswith('R_M_'),
         'Robo_Type'
     ] = 'ContrTrend_M'
 
     df.loc[
+        (df['Robo_Type'] == "") &
         df['Robo_Name'].str.startswith('REM'),
         'Robo_Type'
     ] = 'ContrTrend_M'
 
     df.loc[
+        (df['Robo_Type'] == "") &
         df['Robo_Name'].str.match(r'^R_[A-Z]{3}_'),
         'Robo_Type'
     ] = 'ContrTrend'
@@ -247,7 +260,7 @@ def load_data(file_path):
     ] = 'Trend'
 
     # =========================
-    # NET P/L (КОРРЕКТНО КАК В METATRADER)
+    # NET P/L (ÐšÐžÐ Ð Ð•ÐšÐ¢ÐÐž ÐšÐÐš Ð’ METATRADER)
     # =========================
 
     df['Net_PL'] = (
@@ -256,31 +269,7 @@ def load_data(file_path):
         df['Commission'].fillna(0)
     )
 
-    # =========================
-    # SWAP / HOLDING METRICS
-    # =========================
-
-    df['Holding_Hours'] = (
-        df['Close Time'] - df['Open Time']
-    ).dt.total_seconds() / 3600
-
-    df['Holding_Days'] = df['Holding_Hours'] / 24
-
-    df['Net_PL_No_Swap'] = (
-        df['Net_PL'] -
-        df['Swap'].fillna(0)
-    )
-
-    df['Swap_Per_Day'] = (
-        df['Swap'].fillna(0) /
-        df['Holding_Days'].where(df['Holding_Days'] > 0)
-    ).fillna(0)
-
-    df['Swap_Share'] = (
-        df['Swap'].fillna(0) /
-        df['Net_PL'].abs().where(df['Net_PL'].abs() > 0)
-    ).fillna(0)
-
     df['Close_Date'] = df['Close Time'].dt.date
 
     return df
+

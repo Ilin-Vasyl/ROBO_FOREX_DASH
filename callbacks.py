@@ -131,7 +131,9 @@ def build_summary_table(filtered, end_date):
     order = [
         'Trend',
         'ContrTrend',
-        'ContrTrend_M'
+        'CT+Swap',
+        'ContrTrend_M',
+        'CTM+Swap'
     ]
 
     robo_types = [
@@ -416,6 +418,32 @@ def build_trades_table(filtered):
                 else None
             )
 
+    total_row = {
+        column: ''
+        for column in display_df.columns
+    }
+
+    if len(display_df.columns):
+        total_row[display_df.columns[0]] = 'TOTAL'
+
+    for column in ['Swap', 'Profit', 'Net_PL']:
+        if column in display_df.columns:
+            total_row[column] = round(
+                pd.to_numeric(
+                    filtered[column],
+                    errors='coerce'
+                ).sum(),
+                2
+            )
+
+    display_df = pd.concat(
+        [
+            display_df,
+            pd.DataFrame([total_row])
+        ],
+        ignore_index=True
+    )
+
     column_widths = []
 
     for column in display_df.columns:
@@ -465,11 +493,66 @@ def build_trades_table(filtered):
         style_cell_conditional=column_widths,
         style_data={
             'borderBottom': '1px solid #eeeeee'
-        }
+        },
+        style_data_conditional=[
+            {
+                'if': {
+                    'row_index': len(display_df) - 1
+                },
+                'backgroundColor': '#f2f2f2',
+                'fontWeight': 'bold'
+            }
+        ]
     )
 
 
+def is_swap_excluded(n_clicks):
+
+    return bool((n_clicks or 0) % 2)
+
+
+def is_direction_selected(n_clicks):
+
+    return bool((n_clicks or 0) % 2)
+
+
 def register_callbacks(app, df):
+
+    @app.callback(
+        Output('exclude-swap-button', 'children'),
+        Input('exclude-swap-button', 'n_clicks')
+    )
+    def update_swap_filter_button(n_clicks):
+
+        if is_swap_excluded(n_clicks):
+            return "Exclude Swap: On"
+
+        return "Exclude Swap: Off"
+
+    @app.callback(
+        Output('buy-filter-button', 'children'),
+        Output('sell-filter-button', 'children'),
+        Input('buy-filter-button', 'n_clicks'),
+        Input('sell-filter-button', 'n_clicks')
+    )
+    def update_direction_filter_buttons(buy_clicks, sell_clicks):
+
+        buy_label = (
+            "Buy: On"
+            if is_direction_selected(buy_clicks)
+            else "Buy: Off"
+        )
+
+        sell_label = (
+            "Sell: On"
+            if is_direction_selected(sell_clicks)
+            else "Sell: Off"
+        )
+
+        return (
+            buy_label,
+            sell_label
+        )
 
     @app.callback(
         Output('pair-dropdown', 'options'),
@@ -569,7 +652,10 @@ def register_callbacks(app, df):
         Input('pair-dropdown', 'value'),
         Input('robo-type-dropdown', 'value'),
         Input('robo-name-dropdown', 'value'),
-        Input('combo-metric-dropdown', 'value')
+        Input('combo-metric-dropdown', 'value'),
+        Input('exclude-swap-button', 'n_clicks'),
+        Input('buy-filter-button', 'n_clicks'),
+        Input('sell-filter-button', 'n_clicks')
     )
     def update_chart(
         start_date,
@@ -577,7 +663,10 @@ def register_callbacks(app, df):
         selected_pair,
         selected_robo_type,
         selected_robo_name,
-        selected_combo_metric
+        selected_combo_metric,
+        exclude_swap_clicks,
+        buy_clicks,
+        sell_clicks
     ):
 
         filtered, daily = build_daily_and_balance(
@@ -586,7 +675,10 @@ def register_callbacks(app, df):
             end_date,
             selected_pair,
             selected_robo_type,
-            selected_robo_name
+            selected_robo_name,
+            is_swap_excluded(exclude_swap_clicks),
+            is_direction_selected(buy_clicks),
+            is_direction_selected(sell_clicks)
         )
 
         return build_chart(
@@ -606,6 +698,9 @@ def register_callbacks(app, df):
         Input('pair-dropdown', 'value'),
         Input('robo-type-dropdown', 'value'),
         Input('robo-name-dropdown', 'value'),
+        Input('exclude-swap-button', 'n_clicks'),
+        Input('buy-filter-button', 'n_clicks'),
+        Input('sell-filter-button', 'n_clicks'),
         State('trade-summary-modal', 'style')
     )
     def update_trade_summary_modal(
@@ -616,6 +711,9 @@ def register_callbacks(app, df):
         selected_pair,
         selected_robo_type,
         selected_robo_name,
+        exclude_swap_clicks,
+        buy_clicks,
+        sell_clicks,
         modal_style
     ):
 
@@ -639,7 +737,10 @@ def register_callbacks(app, df):
             end_date,
             selected_pair,
             selected_robo_type,
-            selected_robo_name
+            selected_robo_name,
+            is_swap_excluded(exclude_swap_clicks),
+            is_direction_selected(buy_clicks),
+            is_direction_selected(sell_clicks)
         )
 
         content = build_summary_table(
@@ -662,6 +763,9 @@ def register_callbacks(app, df):
         Input('pair-dropdown', 'value'),
         Input('robo-type-dropdown', 'value'),
         Input('robo-name-dropdown', 'value'),
+        Input('exclude-swap-button', 'n_clicks'),
+        Input('buy-filter-button', 'n_clicks'),
+        Input('sell-filter-button', 'n_clicks'),
         State('swap-holding-modal', 'style')
     )
     def update_swap_holding_modal(
@@ -672,6 +776,9 @@ def register_callbacks(app, df):
         selected_pair,
         selected_robo_type,
         selected_robo_name,
+        exclude_swap_clicks,
+        buy_clicks,
+        sell_clicks,
         modal_style
     ):
 
@@ -695,7 +802,10 @@ def register_callbacks(app, df):
             end_date,
             selected_pair,
             selected_robo_type,
-            selected_robo_name
+            selected_robo_name,
+            is_swap_excluded(exclude_swap_clicks),
+            is_direction_selected(buy_clicks),
+            is_direction_selected(sell_clicks)
         )
 
         content = html.Div([
@@ -734,6 +844,8 @@ def register_callbacks(app, df):
         Input('pair-dropdown', 'value'),
         Input('robo-type-dropdown', 'value'),
         Input('robo-name-dropdown', 'value'),
+        Input('buy-filter-button', 'n_clicks'),
+        Input('sell-filter-button', 'n_clicks'),
         State('trades-modal', 'style')
     )
     def update_trades_modal(
@@ -744,6 +856,8 @@ def register_callbacks(app, df):
         selected_pair,
         selected_robo_type,
         selected_robo_name,
+        buy_clicks,
+        sell_clicks,
         modal_style
     ):
 
@@ -765,7 +879,9 @@ def register_callbacks(app, df):
             end_date,
             selected_pair,
             selected_robo_type,
-            selected_robo_name
+            selected_robo_name,
+            is_direction_selected(buy_clicks),
+            is_direction_selected(sell_clicks)
         )
 
         return (
